@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Simulator Backup</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/argon2-browser/1.18.0/argon2-bundled.min.js"></script>
+<style>
+  :root {
+    --bg-deep:    #070a0f;
+    --bg-panel:   #0d1520;
+    --bg-card:    #111d2e;
+    --bg-surface: #162235;
+    --amber:      #e8a020;
+    --amber-dim:  #a06810;
+    --amber-glow: rgba(232,160,32,0.15);
+    --blue-inst:  #1a3a5c;
+    --blue-mid:   #2a5580;
+    --blue-light: #4a85b0;
+    --ice:        #dde4ed;
+    --muted:      #8a9bb0;
+    --danger:     #c0392b;
+    --success:    #27ae60;
+    --border:     rgba(74,133,176,0.25);
+    --border-am:  rgba(232,160,32,0.3);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-deep);
+    color: var(--ice);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── SCANLINES OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ─── LOGIN SCREEN ─── */
+  #login-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .login-frame {
+    border: 1px solid var(--border-am);
+    background: var(--bg-panel);
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: 0 0 60px rgba(232,160,32,0.08), 0 0 120px rgba(26,58,92,0.3), inset 0 1px 0 rgba(232,160,32,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-frame::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    animation: scanbar 4s ease-in-out infinite;
+  }
+
+  @keyframes scanbar {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(300px); }
+  }
+
+  .login-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border-am);
+    text-align: center;
+  }
+
+  .login-logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .login-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 1px;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(232,160,32,0.5);
+  }
+
+  .login-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 6px;
+  }
+
+  .login-body {
+    padding: 28px 32px 32px;
+  }
+
+  .field-group {
+    margin-bottom: 18px;
+  }
+
+  .field-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 7px;
+    display: block;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--amber);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .field-input:focus {
+    border-color: var(--amber-dim);
+    box-shadow: 0 0 0 2px rgba(232,160,32,0.1), inset 0 0 8px rgba(232,160,32,0.04);
+  }
+
+  .field-input::placeholder { color: rgba(138,155,176,0.4); }
+
+  .btn-login {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    margin-top: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-login:hover {
+    background: rgba(232,160,32,0.1);
+    box-shadow: 0 0 20px rgba(232,160,32,0.2);
+  }
+
+  .btn-login:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .login-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    text-align: center;
+    margin-top: 14px;
+    min-height: 16px;
+    letter-spacing: 1px;
+  }
+
+  .status-error  { color: var(--danger); }
+  .status-ok     { color: var(--success); }
+  .status-info   { color: var(--muted); }
+
+  .login-corner {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: var(--amber);
+    border-style: solid;
+    opacity: 0.6;
+  }
+  .login-corner.tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+  .login-corner.tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+  .login-corner.bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+  .login-corner.br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+  /* ─── MAIN APP ─── */
+  #app { display: none; }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    height: 60px;
+    backdrop-filter: blur(10px);
+  }
+
+  .nav-brand {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px rgba(232,160,32,0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nav-brand::before {
+    content: '✈';
+    font-size: 18px;
+    opacity: 0.8;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .nav-link {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 16px;
+    border: 1px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    cursor: pointer;
+    background: none;
+  }
+
+  .nav-link:hover, .nav-link.active {
+    color: var(--amber);
+    border-color: var(--border-am);
+  }
+
+  .btn-logout {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 5px 14px;
+    cursor: pointer;
+    margin-left: 12px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-deep) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 56px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(26,58,92,0.3) 0%, transparent 70%);
+  }
+
+  .hero-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .hero-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 700;
+    color: var(--ice);
+    line-height: 1;
+    letter-spacing: 2px;
+    text-shadow: 0 0 40px rgba(221,228,237,0.15);
+    position: relative;
+  }
+
+  .hero-title span { color: var(--amber); }
+
+  .hero-desc {
+    margin-top: 14px;
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace;
+    position: relative;
+  }
+
+  /* SECTIONS */
+  .section {
+    padding: 64px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section + .section {
+    border-top: 1px solid var(--border);
+  }
+
+  .section-eyebrow {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-am);
+    max-width: 200px;
+  }
+
+  .section-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ice);
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+  }
+
+  /* ─── FERRAMENTAS ─── */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .tool-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--amber-dim);
+    transition: background 0.2s;
+  }
+
+  .tool-card:hover {
+    border-color: var(--border-am);
+    box-shadow: 0 0 20px rgba(232,160,32,0.06);
+  }
+
+  .tool-card:hover::before { background: var(--amber); }
+
+  .tool-icon {
+    font-size: 28px;
+    opacity: 0.8;
+  }
+
+  .tool-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ice);
+    letter-spacing: 1px;
+  }
+
+  .tool-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .tool-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--amber-dim);
+    display: inline-block;
+    width: fit-content;
+  }
+
+  .btn-tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    background: transparent;
+    border: 1px solid var(--blue-mid);
+    color: var(--blue-light);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    margin-top: 4px;
+    width: fit-content;
+  }
+
+  .btn-tool:hover {
+    background: rgba(42,85,128,0.3);
+    border-color: var(--blue-light);
+    color: var(--ice);
+  }
+
+  /* ─── AERONAVES ─── */
+  .aircraft-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+
+  .aircraft-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    position: relative;
+  }
+
+  .aircraft-card:hover {
+    border-color: var(--amber);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(232,160,32,0.1);
+  }
+
+  .aircraft-thumb {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    transition: filter 0.25s;
+  }
+
+  .aircraft-card:hover .aircraft-thumb {
+    filter: brightness(1.1) saturate(1.1);
+  }
+
+  /* Fallback when image missing */
+  .aircraft-thumb-placeholder {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, var(--bg-surface), var(--blue-inst));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    border-bottom: 1px solid var(--border);
+    transition: filter 0.25s;
+  }
+
+  .aircraft-card:hover .aircraft-thumb-placeholder { filter: brightness(1.15); }
+
+  .aircraft-info {
+    padding: 14px 16px 16px;
+  }
+
+  .aircraft-code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .aircraft-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ice);
+    letter-spacing: 0.5px;
+  }
+
+  .aircraft-mfr {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .aircraft-dl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--amber);
+  }
+
+  .aircraft-dl svg { flex-shrink: 0; }
+
+  .aircraft-card:hover .aircraft-dl { color: var(--amber); }
+
+  /* ─── GUIAS ─── */
+  .guides-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .guide-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .guide-item:hover { border-color: var(--border-am); }
+
+  .guide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    cursor: pointer;
+    user-select: none;
+    gap: 16px;
+  }
+
+  .guide-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .guide-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--amber-dim);
+    letter-spacing: 1px;
+    min-width: 24px;
+  }
+
+  .guide-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ice);
+    letter-spacing: 0.5px;
+  }
+
+  .guide-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--blue-light);
+    border: 1px solid var(--blue-inst);
+    padding: 2px 8px;
+    flex-shrink: 0;
+  }
+
+  .guide-chevron {
+    color: var(--amber-dim);
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+
+  .guide-item.open .guide-chevron { transform: rotate(180deg); }
+
+  .guide-body {
+    display: none;
+    padding: 0 24px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .guide-item.open .guide-body { display: block; }
+
+  .guide-body ol, .guide-body ul {
+    padding-left: 22px;
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .guide-body li {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .guide-body li strong {
+    color: var(--ice);
+    font-weight: 500;
+  }
+
+  .guide-body code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    color: var(--amber);
+    border-radius: 2px;
+  }
+
+  .guide-note {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: rgba(26,58,92,0.3);
+    border-left: 3px solid var(--blue-mid);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .guide-note strong { color: var(--blue-light); }
+
+  .guide-warn {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(192,57,43,0.1);
+    border-left: 3px solid var(--danger);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-panel);
+  }
+
+  .footer-brand {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 1px;
+  }
+
+  .footer-info {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-align: right;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 640px) {
+    nav { padding: 0 20px; }
+    .nav-links { gap: 2px; }
+    .nav-link { padding: 5px 10px; font-size: 11px; }
+    .section { padding: 48px 20px; }
+    .hero { padding: 40px 20px; }
+    footer { flex-direction: column; gap: 8px; text-align: center; }
+    .footer-info { text-align: center; }
+    .aircraft-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  }
+
+  /* ─── SECTION VISIBILITY ─── */
+  .sec { display: none; }
+  .sec.active { display: block; }
+
+  /* ─── LOADING SPINNER ─── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--amber-dim);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-frame">
+    <div class="login-corner tl"></div>
+    <div class="login-corner tr"></div>
+    <div class="login-corner bl"></div>
+    <div class="login-corner br"></div>
+
+    <div class="login-header">
+      <div class="login-logo">Sistema de Acesso Seguro</div>
+      <div class="login-title">Flight Simulator Backup</div>
+      <div class="login-sub">// AUTENTICAÇÃO REQUERIDA //</div>
+    </div>
+
+    <div class="login-body">
+      <div class="field-group">
+        <label class="field-label" for="inp-user">Usuário</label>
+        <input class="field-input" type="text" id="inp-user" placeholder="identificação" autocomplete="username" spellcheck="false">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="inp-pass">Senha</label>
+        <input class="field-input" type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-login" id="btn-login" onclick="doLogin()">Acessar Sistema</button>
+      <div class="login-status" id="login-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════ -->
+<div id="app">
+
+  <nav>
+    <div class="nav-brand">Flight Simulator Backup</div>
+    <div class="nav-links">
+      <button class="nav-link active" onclick="showSection('ferramentas', this)">Ferramentas</button>
+      <button class="nav-link" onclick="showSection('aeronaves', this)">Aeronaves</button>
+      <button class="nav-link" onclick="showSection('guias', this)">Guias</button>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-label">// repositório privado de addons //</div>
+    <h1 class="hero-title">Flight Simulator <span>Backup</span></h1>
+    <p class="hero-desc">Ferramentas • Aeronaves • Guias de Instalação</p>
+  </div>
+
+  <!-- ── FERRAMENTAS ── -->
+  <div class="sec active" id="sec-ferramentas">
+    <div class="section">
+      <div class="section-eyebrow">Módulo 01</div>
+      <h2 class="section-title">Ferramentas</h2>
+
+      <div class="tools-grid">
+
+        <div class="tool-card">
+          <div class="tool-icon">🚁</div>
+          <div>
+            <div class="tool-badge">Ground Ops</div>
+            <div class="tool-name">Toolbar Pushback</div>
+          </div>
+          <div class="tool-desc">
+            Addon de pushback para Microsoft Flight Simulator 2020/2024. Permite controlar o reboque da aeronave diretamente pela barra de ferramentas, com suporte a steering e velocidade ajustável.
+          </div>
+          <a class="btn-tool" href="#" onclick="alert('Substitua este link pelo link real da ferramenta.'); return false;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Download
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AERONAVES ── -->
+  <div class="sec" id="sec-aeronaves">
+    <div class="section">
+      <div class="section-eyebrow">Módulo 02</div>
+      <h2 class="section-title">Aeronaves</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:28px;font-family:'Share Tech Mono',monospace;letter-spacing:1px;">
+        // Clique na aeronave para iniciar download via torrent //
+      </p>
+
+      <div class="aircraft-grid">
+
+        <!-- B737-800 -->
+        <a class="aircraft-card" href="magnet:?xt=urn:btih:6a017668c98cfece4ec2ab5ac0717ade1db8428c&dn=pmdg-aircraft-738-v3-0-112.rar&xl=1906014623&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fwww.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fretracker.lanta-net.ru%3A2710%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce">
+          <img class="aircraft-thumb" src="b738.jpg" alt="PMDG B737-800" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="aircraft-thumb-placeholder" style="display:none">✈</div>
+          <div class="aircraft-info">
+            <div class="aircraft-code">B738</div>
+            <div class="aircraft-name">Boeing 737-800</div>
+            <div class="aircraft-mfr">PMDG — MSFS 2020</div>
+            <div class="aircraft-dl">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Torrent Download
+            </div>
+          </div>
+        </a>
+
+        <!-- B737-900 -->
+        <a class="aircraft-card" href="magnet:?xt=urn:btih:e0859d450624d7d058e9e24dc94da82da7043b55&dn=pmdg-aircraft-739-v3-0-112.rar&xl=1307875878&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fwww.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fretracker.lanta-net.ru%3A2710%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce">
+          <img class="aircraft-thumb" src="b739.jpg" alt="PMDG B737-900" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="aircraft-thumb-placeholder" style="display:none">✈</div>
+          <div class="aircraft-info">
+            <div class="aircraft-code">B739</div>
+            <div class="aircraft-name">Boeing 737-900</div>
+            <div class="aircraft-mfr">PMDG — MSFS 2020</div>
+            <div class="aircraft-dl">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Torrent Download
+            </div>
+          </div>
+        </a>
+
+        <!-- B777L -->
+        <a class="aircraft-card" href="magnet:?xt=urn:btih:3a66b81755b22409a7e15fd6bdad1e5f163a9bbd&dn=pmdg-aircraft-77l-v2-0-128.rar&xl=1126327232&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fwww.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fretracker.lanta-net.ru%3A2710%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce">
+          <img class="aircraft-thumb" src="b77L.jpg" alt="PMDG B777L" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="aircraft-thumb-placeholder" style="display:none">✈</div>
+          <div class="aircraft-info">
+            <div class="aircraft-code">B77L</div>
+            <div class="aircraft-name">Boeing 777-200LR</div>
+            <div class="aircraft-mfr">PMDG — MSFS 2020</div>
+            <div class="aircraft-dl">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Torrent Download
+            </div>
+          </div>
+        </a>
+
+        <!-- B777ER -->
+        <a class="aircraft-card" href="magnet:?xt=urn:btih:4e026e83b89cc85ae8fa5a8245bbce3d60d21970&dn=pmdg-aircraft-77er-v2-0-128.rar&xl=1542410095&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fwww.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fretracker.lanta-net.ru%3A2710%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce">
+          <img class="aircraft-thumb" src="b77ER.jpg" alt="PMDG B777ER" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="aircraft-thumb-placeholder" style="display:none">✈</div>
+          <div class="aircraft-info">
+            <div class="aircraft-code">B77ER</div>
+            <div class="aircraft-name">Boeing 777-300ER</div>
+            <div class="aircraft-mfr">PMDG — MSFS 2020</div>
+            <div class="aircraft-dl">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Torrent Download
+            </div>
+          </div>
+        </a>
+
+        <!-- B777W -->
+        <a class="aircraft-card" href="magnet:?xt=urn:btih:d2206fb76cf67e636fec6cbdab65de9821ccac28&dn=pmdg-aircraft-77w-v2-0-128.rar&xl=1142609406&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fp4p.arenabg.ch%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fwww.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fretracker.lanta-net.ru%3A2710%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce">
+          <img class="aircraft-thumb" src="b77W.jpg" alt="PMDG B777W" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="aircraft-thumb-placeholder" style="display:none">✈</div>
+          <div class="aircraft-info">
+            <div class="aircraft-code">B77W</div>
+            <div class="aircraft-name">Boeing 777-300W</div>
+            <div class="aircraft-mfr">PMDG — MSFS 2020</div>
+            <div class="aircraft-dl">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Torrent Download
+            </div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GUIAS ── -->
+  <div class="sec" id="sec-guias">
+    <div class="section">
+      <div class="section-eyebrow">Módulo 03</div>
+      <h2 class="section-title">Guias de Instalação</h2>
+
+      <div class="guides-list">
+
+        <!-- Guia 1: PMDG Geral -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">01</div>
+              <div class="guide-title">Instalação PMDG — Visão Geral</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">GERAL</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <div class="guide-note"><strong>Pré-requisito:</strong> Microsoft Flight Simulator 2020 instalado e com pelo menos uma sessão iniciada. Certifique-se de ter um cliente torrent instalado (qBittorrent recomendado).</div>
+            <ol>
+              <li><strong>Baixe o arquivo:</strong> Clique no card da aeronave desejada na seção Aeronaves. O cliente torrent abrirá automaticamente com o link magnet.</li>
+              <li><strong>Aguarde o download:</strong> O arquivo <code>.rar</code> pode ter entre 1 GB e 2 GB. Mantenha o cliente torrent aberto até a conclusão.</li>
+              <li><strong>Extraia o conteúdo:</strong> Com WinRAR ou 7-Zip, extraia o arquivo <code>.rar</code> em uma pasta temporária de sua preferência.</li>
+              <li><strong>Execute o instalador:</strong> Dentro da pasta extraída, localize e execute o arquivo <code>setup.exe</code> ou <code>installer.exe</code> com privilégios de administrador.</li>
+              <li><strong>Siga as instruções na tela:</strong> O instalador da PMDG detectará automaticamente o caminho de instalação do MSFS. Confirme e finalize.</li>
+              <li><strong>Verifique no simulador:</strong> Abra o MSFS 2020, vá em <em>Hangar</em> e verifique se a aeronave aparece na lista de aeronaves disponíveis.</li>
+            </ol>
+            <div class="guide-warn"><strong>Atenção:</strong> Alguns antivírus podem bloquear arquivos de addons. Adicione a pasta do MSFS e a pasta de extração à lista de exclusões antes de instalar.</div>
+          </div>
+        </div>
+
+        <!-- Guia 2: B737-800 -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">02</div>
+              <div class="guide-title">Instalação PMDG Boeing 737-800</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">B738</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <ol>
+              <li><strong>Baixe o torrent:</strong> Clique no card <em>Boeing 737-800</em> na seção Aeronaves para iniciar o download de <code>pmdg-aircraft-738-v3-0-112.rar</code> (~1,9 GB).</li>
+              <li><strong>Extraia:</strong> Após o download, extraia o <code>.rar</code> para uma pasta temporária usando WinRAR ou 7-Zip.</li>
+              <li><strong>Execute o instalador:</strong> Abra a pasta extraída e execute o <code>setup.exe</code> como administrador. O instalador buscará automaticamente o diretório do MSFS 2020.</li>
+              <li><strong>Aceite os termos e conclua:</strong> Siga as etapas do wizard de instalação, aceite os termos e clique em <em>Instalar</em>.</li>
+              <li><strong>Primeiro voo:</strong> Abra o MSFS 2020, selecione <em>Livre</em> no menu principal, escolha o aeroporto de saída, selecione o <strong>PMDG 737-800</strong> no Hangar e inicie o voo.</li>
+            </ol>
+            <div class="guide-note"><strong>Dica:</strong> Na primeira inicialização, o FMC do 737 estará em modo de alinhamento de IRS. Aguarde alguns minutos antes de iniciar os procedimentos de voo.</div>
+          </div>
+        </div>
+
+        <!-- Guia 3: B737-900 -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">03</div>
+              <div class="guide-title">Instalação PMDG Boeing 737-900</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">B739</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <ol>
+              <li><strong>Baixe o torrent:</strong> Clique no card <em>Boeing 737-900</em> para iniciar o download de <code>pmdg-aircraft-739-v3-0-112.rar</code> (~1,3 GB).</li>
+              <li><strong>Extraia o arquivo:</strong> Use WinRAR ou 7-Zip para extrair o conteúdo em uma pasta temporária.</li>
+              <li><strong>Instalação:</strong> Execute o <code>setup.exe</code> como administrador. O processo é idêntico ao do 737-800. O instalador pode solicitar a versão base do 737 — certifique-se de que o 737-800 já está instalado.</li>
+              <li><strong>Conclua a instalação:</strong> Siga o wizard e finalize. O 737-900 aparecerá como uma variante adicional no Hangar do MSFS.</li>
+              <li><strong>Verificação:</strong> No Hangar, filtre por <em>PMDG</em> para ver todas as variantes disponíveis do 737.</li>
+            </ol>
+            <div class="guide-note"><strong>Nota:</strong> O 737-900 compartilha o mesmo FMC e sistemas do 737-800. Configurações salvas (route database, company routes) são compatíveis entre as variantes.</div>
+          </div>
+        </div>
+
+        <!-- Guia 4: B777L -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">04</div>
+              <div class="guide-title">Instalação PMDG Boeing 777-200LR</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">B77L</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <ol>
+              <li><strong>Baixe o torrent:</strong> Clique no card <em>Boeing 777-200LR</em> para iniciar o download de <code>pmdg-aircraft-77l-v2-0-128.rar</code> (~1,1 GB).</li>
+              <li><strong>Extraia:</strong> Extraia o <code>.rar</code> em uma pasta temporária com WinRAR ou 7-Zip.</li>
+              <li><strong>Execute o instalador:</strong> Localize o <code>setup.exe</code> na pasta extraída e execute como administrador.</li>
+              <li><strong>Caminho de instalação:</strong> O instalador detectará o MSFS 2020. Confirme o diretório — normalmente em <code>AppData\Local\Packages\Microsoft.FlightSimulator...</code> ou na pasta <em>Community</em> personalizada.</li>
+              <li><strong>Finalize e verifique:</strong> Após a instalação, abra o MSFS 2020 e localize o <strong>PMDG 777-200LR</strong> no Hangar.</li>
+            </ol>
+            <div class="guide-note"><strong>Dica de performance:</strong> O 777 é um aircraft exigente. Recomenda-se configurar o MSFS em modo <em>High-End PC</em> com renderização em 1080p para garantir fluidez durante cruzeiros de longa distância.</div>
+          </div>
+        </div>
+
+        <!-- Guia 5: B777ER -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">05</div>
+              <div class="guide-title">Instalação PMDG Boeing 777-300ER</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">B77ER</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <ol>
+              <li><strong>Baixe o torrent:</strong> Clique no card <em>Boeing 777-300ER</em> para iniciar o download de <code>pmdg-aircraft-77er-v2-0-128.rar</code> (~1,5 GB).</li>
+              <li><strong>Extraia o conteúdo:</strong> Use WinRAR ou 7-Zip para extrair em pasta temporária.</li>
+              <li><strong>Instale como administrador:</strong> Execute o <code>setup.exe</code>. O instalador pode solicitar a versão base do 777 — certifique-se de que ao menos um 777 já está instalado.</li>
+              <li><strong>Configuração pós-instalação:</strong> Acesse o <em>PMDG Operations Center</em> (se disponível) para configurar liveries e opções de aeronave.</li>
+              <li><strong>Primeiro voo:</strong> Selecione o <strong>PMDG 777-300ER</strong> no Hangar. Recomenda-se iniciar em gate/rampa para executar os procedimentos completos de cold & dark.</li>
+            </ol>
+            <div class="guide-note"><strong>Cold & Dark:</strong> O 777-300ER inicia por padrão em estado cold & dark. Utilize o checklist eletrônico do EFB integrado na aeronave para seguir os procedimentos de inicialização.</div>
+          </div>
+        </div>
+
+        <!-- Guia 6: B777W -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">06</div>
+              <div class="guide-title">Instalação PMDG Boeing 777-300W</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">B77W</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <ol>
+              <li><strong>Baixe o torrent:</strong> Clique no card <em>Boeing 777-300W</em> para iniciar o download de <code>pmdg-aircraft-77w-v2-0-128.rar</code> (~1,1 GB).</li>
+              <li><strong>Extraia:</strong> Extraia o <code>.rar</code> com WinRAR ou 7-Zip em uma pasta temporária.</li>
+              <li><strong>Execute o instalador:</strong> Abra o <code>setup.exe</code> como administrador e siga as instruções do wizard.</li>
+              <li><strong>Verificação de compatibilidade:</strong> A variante 77W pode exigir que outras variantes do 777 estejam instaladas. Instale preferencialmente na ordem: 77L → 77ER → 77W.</li>
+              <li><strong>Verifique no Hangar:</strong> Todas as variantes PMDG 777 aparecerão agrupadas no filtro <em>PMDG</em> do Hangar do MSFS.</li>
+            </ol>
+            <div class="guide-note"><strong>Liveries:</strong> Para instalar liveries adicionais (pinturas de companhias aéreas), coloque os arquivos de livery dentro da pasta da aeronave em <code>Community\pmdg-aircraft-77X\SimObjects\Airplanes\</code>.</div>
+          </div>
+        </div>
+
+        <!-- Guia 7: Toolbar Pushback -->
+        <div class="guide-item" onclick="toggleGuide(this)">
+          <div class="guide-header">
+            <div class="guide-header-left">
+              <div class="guide-num">07</div>
+              <div class="guide-title">Instalação do Toolbar Pushback</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="guide-tag">FERRAMENTA</div>
+              <svg class="guide-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="guide-body">
+            <div class="guide-note"><strong>O que é:</strong> O Toolbar Pushback é um addon gratuito que adiciona um controle de reboque (pushback) à barra de ferramentas do MSFS 2020, permitindo controlar a direção, velocidade e ângulo do pushback sem comandos de voz ou atalhos complexos.</div>
+            <ol>
+              <li><strong>Baixe o addon:</strong> Clique em <em>Download</em> na seção Ferramentas para baixar o arquivo do Toolbar Pushback.</li>
+              <li><strong>Extraia o conteúdo:</strong> O arquivo virá em formato <code>.zip</code>. Extraia com WinRAR ou 7-Zip.</li>
+              <li><strong>Copie para a pasta Community:</strong> Copie a pasta <code>toolbar-pushback</code> (ou o nome equivalente extraído) para o diretório <em>Community</em> do seu MSFS 2020.
+                <ul style="margin-top:8px;">
+                  <li>Instalação via Microsoft Store: <code>C:\Users\[usuário]\AppData\Local\Packages\Microsoft.FlightSimulator_8wekyb3d8bbwe\LocalCache\Packages\Community</code></li>
+                  <li>Instalação via Steam: <code>C:\Users\[usuário]\AppData\Roaming\Microsoft Flight Simulator\Packages\Community</code></li>
+                </ul>
+              </li>
+              <li><strong>Inicie o MSFS:</strong> Abra o simulador. O addon é carregado automaticamente — não há instalador separado.</li>
+              <li><strong>Localize na barra de ferramentas:</strong> Durante um voo, clique no ícone de caminhão/reboque na barra de ferramentas superior do MSFS para abrir o painel do Toolbar Pushback.</li>
+              <li><strong>Utilize o pushback:</strong> No painel, defina a direção (esquerda/direita/reto) e clique em <em>Push Back</em> para iniciar. Use os controles de ângulo para guiar a aeronave até a posição desejada e clique em <em>Stop</em> para finalizar.</li>
+            </ol>
+            <div class="guide-note"><strong>Compatibilidade:</strong> O Toolbar Pushback é compatível com todas as aeronaves do MSFS 2020, incluindo todas as variantes PMDG listadas neste site.</div>
+            <div class="guide-warn"><strong>Conflito com pushback nativo:</strong> Se o MSFS exibir o pushback padrão junto ao addon, desative o controle ATC de pushback pressionando <code>Shift + P</code> antes de usar o Toolbar Pushback.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">✈ FSB</div>
+    <div class="footer-info">
+      Flight Simulator Backup<br>
+      <span style="opacity:0.5">Repositório Privado — Acesso Restrito</span>
+    </div>
+  </footer>
+
+</div><!-- #app -->
+
+<script>
+// ══════════════════════════════════════════════
+// CREDENTIALS
+// Hash Argon2 da senha. Gere com seu gerador e cole aqui.
+// Exemplo gerado com argon2-browser (type: Argon2id):
+// usuário: admin | senha: (coloque o hash da sua senha aqui)
+// ══════════════════════════════════════════════
+const CREDENTIALS = {
+  // username: argon2_hash_da_senha
+  // Exemplo: substitua o hash abaixo pelo gerado com seu gerador Argon2
+  "ivanbsf": "$argon2id$v=19$m=65536,t=3,p=4$ZlNkRmlQSmVpd0xnMUcxaHpqbUFHdw$elqJ7I4azh/sG8xYpn1o4f/U/37PejX4byJUx0oQTps"
+};
+
+// Para gerar um hash com argon2-browser no console:
+//   argon2.hash({ pass: 'suasenha', salt: 'saltaleatorio16b', type: argon2.ArgonType.Argon2id })
+//   .then(h => console.log(h.encoded))
+
+// ── LOGIN ──
+async function doLogin() {
+  const btn    = document.getElementById('btn-login');
+  const status = document.getElementById('login-status');
+  const user   = document.getElementById('inp-user').value.trim();
+  const pass   = document.getElementById('inp-pass').value;
+
+  if (!user || !pass) {
+    setStatus('Preencha usuário e senha.', 'error');
+    return;
+  }
+
+  const storedHash = CREDENTIALS[user];
+  if (!storedHash) {
+    setStatus('Usuário ou senha incorretos.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span><span class="status-info">Verificando credenciais...</span>';
+
+  try {
+    const result = await argon2.verify({ pass, encoded: storedHash });
+    if (result) {
+      setStatus('Acesso autorizado.', 'ok');
+      setTimeout(enterApp, 700);
+    } else {
+      setStatus('Usuário ou senha incorretos.', 'error');
+      btn.disabled = false;
+    }
+  } catch (e) {
+    // Se o hash for placeholder, mostra instrução
+    if (storedHash.includes('RealHashGoesHere')) {
+      setStatus('Configure o hash Argon2 no código-fonte.', 'error');
+    } else {
+      setStatus('Usuário ou senha incorretos.', 'error');
+    }
+    btn.disabled = false;
+  }
+}
+
+function setStatus(msg, type) {
+  const s = document.getElementById('login-status');
+  s.className = 'login-status status-' + type;
+  s.textContent = msg;
+}
+
+function enterApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+function logout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('inp-pass').value = '';
+  document.getElementById('login-status').textContent = '';
+  document.getElementById('btn-login').disabled = false;
+}
+
+// Enter key on login
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('inp-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('inp-user').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('inp-pass').focus();
+  });
+});
+
+// ── NAVIGATION ──
+function showSection(name, el) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  el.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── GUIDES ACCORDION ──
+function toggleGuide(item) {
+  item.classList.toggle('open');
+}
+</script>
+</body>
+</html>
